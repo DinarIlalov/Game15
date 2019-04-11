@@ -133,8 +133,6 @@ class GameViewController: UIViewController {
             }
         }
         
-        print(translation, " - ", chipView.center)
-        
         recognizer.setTranslation(CGPoint.zero, in: self.view)
         
         if recognizer.state == .ended {

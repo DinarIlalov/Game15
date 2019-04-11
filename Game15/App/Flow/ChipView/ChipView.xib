@@ -25,7 +25,7 @@
                 <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="TcU-8s-bhk">
                     <rect key="frame" x="0.0" y="0.0" width="130" height="130"/>
                     <subviews>
-                        <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="99f-KJ-9ks">
+                        <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="99f-KJ-9ks" customClass="RoundedView" customModule="Game15" customModuleProvider="target">
                             <rect key="frame" x="20" y="20" width="90" height="90"/>
                             <subviews>
                                 <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="15" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="RAV-Xn-nSB">

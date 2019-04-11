@@ -42,6 +42,5 @@ final class ChipView: XibView {
         mainView.layer.borderWidth = 6
         mainView.layer.borderColor = centerView.backgroundColor?.cgColor
         
-        centerView.layer.cornerRadius = centerView.bounds.width/2
     }
 }
