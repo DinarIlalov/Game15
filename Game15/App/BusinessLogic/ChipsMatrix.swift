@@ -61,6 +61,8 @@ class ChipsMatrix {
             self.chips.append(row)
         }
         
+        change14And15ifNeeded()
+        
         zeroElement = MatrixCoordinate(rowIndex: 3, columnIndex: 3)
     }
     
@@ -92,6 +94,30 @@ class ChipsMatrix {
     
     // MARK: - Private
     
-    
+    private func change14And15ifNeeded() {
+        var sum = 4 // zero in last row
+        
+        let flatten = Array(self.chips.joined())
+        
+        for (index, value) in flatten.enumerated() {
+            
+            for index2 in ((index + 1)..<16) {
+                
+                if value > flatten[index2] && flatten[index2] != 0 {
+                    sum += 1
+                }
+                
+            }
+        }
+        
+        if sum % 2 != 0 {
+            let temp = chips[0][0]
+            chips[0][0] = chips[0][1]
+            chips[0][1] = temp
+            
+            print("changed")
+        }
+        
+    }
 }
 
