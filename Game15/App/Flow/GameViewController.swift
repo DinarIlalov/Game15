@@ -25,11 +25,13 @@ class GameViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        game.new()
-        buildGameField()
-        
     }
 
+    override func viewDidLayoutSubviews() {
+        game.new()
+        buildGameField()
+    }
+    
     private func buildGameField() {
         
         chipViews.forEach { $0.removeFromSuperview() }
