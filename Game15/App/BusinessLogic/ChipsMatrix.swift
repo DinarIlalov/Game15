@@ -66,33 +66,64 @@ class ChipsMatrix {
         zeroElement = MatrixCoordinate(rowIndex: 3, columnIndex: 3)
     }
     
-    func moveToZeroValue(from coordinate: MatrixCoordinate) -> MatrixCoordinate {
-        guard canMoveToZero(from: coordinate) != .none else { return coordinate}
+    func availableMove(from coordinate: MatrixCoordinate) -> ChipMove {
         
-        let newChipCoordinate = zeroElement
-        self[zeroElement.rowIndex, zeroElement.columnIndex] = self[coordinate.rowIndex, coordinate.columnIndex]
-        self[coordinate.rowIndex, coordinate.columnIndex] = 0
-        self.zeroElement = coordinate
+        let moveDirection = moveDirectionToZero(from: coordinate)
         
-        return newChipCoordinate
+        var numbers: [Int] = []
+        switch moveDirection {
+        case .none:
+            numbers.append(self[coordinate.rowIndex, coordinate.columnIndex])
+        case .up(let count):
+            for i in (0...count) {
+                numbers.append(self[coordinate.rowIndex - i, coordinate.columnIndex])
+            }
+        case .down(let count):
+            for i in (0...count) {
+                numbers.append(self[coordinate.rowIndex + i, coordinate.columnIndex])
+            }
+        case .right(let count):
+            for i in (0...count) {
+                numbers.append(self[coordinate.rowIndex, coordinate.columnIndex + i])
+            }
+        case .left(let count):
+            for i in (0...count) {
+                numbers.append(self[coordinate.rowIndex, coordinate.columnIndex - i])
+            }
+        }
+        
+        return ChipMove(numbers: numbers, moveDirection: moveDirection)
     }
     
-    func canMoveToZero(from coordinate: MatrixCoordinate) -> AvailableMoveDirection {
+    func moveValuesToZero(from coordinates: [MatrixCoordinate]) {
         
-        let upNeighbour = MatrixCoordinate(rowIndex: coordinate.rowIndex-1, columnIndex: coordinate.columnIndex)
-        let downNeighbour = MatrixCoordinate(rowIndex: coordinate.rowIndex+1, columnIndex: coordinate.columnIndex)
-        let rightNeighbour = MatrixCoordinate(rowIndex: coordinate.rowIndex, columnIndex: coordinate.columnIndex+1)
-        let leftNeighbour = MatrixCoordinate(rowIndex: coordinate.rowIndex, columnIndex: coordinate.columnIndex-1)
-        
-        if zeroElement == upNeighbour { return .up }
-        if zeroElement == downNeighbour { return .down }
-        if zeroElement == leftNeighbour { return .left }
-        if zeroElement == rightNeighbour { return .right }
-        
-        return .none
+        var movingValue = 0
+        var previouValue = 0
+        for coordinate in coordinates {
+            movingValue = self[coordinate.rowIndex, coordinate.columnIndex]
+            self[coordinate.rowIndex, coordinate.columnIndex] = previouValue
+            if previouValue == 0 {
+                self.zeroElement = MatrixCoordinate(rowIndex: coordinate.rowIndex, columnIndex: coordinate.columnIndex)
+            }
+            previouValue = movingValue
+        }
     }
     
     // MARK: - Private
+    
+    private func moveDirectionToZero(from coordinate: MatrixCoordinate) -> AvailableMoveDirection {
+        
+        if coordinate.columnIndex == zeroElement.columnIndex {
+            let chipsCount = coordinate.rowIndex - zeroElement.rowIndex
+            return chipsCount < 0 ? .down(abs(chipsCount)) : .up(chipsCount)
+        } else if coordinate.rowIndex == zeroElement.rowIndex {
+            let chipsCount = coordinate.columnIndex - zeroElement.columnIndex
+            return chipsCount < 0 ? .right(abs(chipsCount)) : .left(chipsCount)
+        }
+        
+        return .none
+        
+    }
     
     private func change14And15ifNeeded() {
         var sum = 4 // zero in last row

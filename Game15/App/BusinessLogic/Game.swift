@@ -34,18 +34,43 @@ class Game {
         }
     }
     
-    func canMoveChip(_ chip: ChipModel) -> AvailableMoveDirection {
-        return field.canMoveToZero(from: chip.placeInMatrix)
+    
+    /// return Available move with chip models and direction
+    ///
+    /// - Parameter coordinate: selected chip coordinate in ChipsMatrix
+    /// - Returns: ChipMove
+    func chipsMove(from coordinate: MatrixCoordinate) -> ChipMove {
+        var chipMove = field.availableMove(from: coordinate)
+        chipMove.setModels(allModels: chips)
+        
+        return chipMove
     }
     
-    func moveChipToZero(_ chip: ChipModel) {
+    
+    /// change coordinates in Chip models after move done
+    ///
+    /// - Parameter chipMove: ChipMove
+    func moveChipToZero(_ chipMove: ChipMove) {
         
-        let zeroChip = chips.first { $0.number == 0 }
-        zeroChip?.placeInMatrix = chip.placeInMatrix
+        var movingCoordinates: [MatrixCoordinate] = []
         
-        chip.placeInMatrix = field.moveToZeroValue(from: chip.placeInMatrix)
+        var zeroCoordinate: MatrixCoordinate = MatrixCoordinate(rowIndex: 0, columnIndex: 0)
+        for (modelIndex, model) in chipMove.chipModels.enumerated() {
+            movingCoordinates.append(model.placeInMatrix)
+            
+            if modelIndex == 0 {
+                zeroCoordinate = model.placeInMatrix
+            } else if modelIndex >= chipMove.chipModels.count-1 {
+                model.placeInMatrix = zeroCoordinate
+                break
+            }
+            model.placeInMatrix = chipMove.chipModels[modelIndex+1].placeInMatrix
+        }
+        
+        field.moveValuesToZero(from: movingCoordinates)
         
         checkGameIsDone()
+        
     }
     
     private func checkGameIsDone() {

@@ -8,7 +8,10 @@
 
 import Foundation
 
-enum AvailableMoveDirection {
-    case up, down, left, right
+enum AvailableMoveDirection: Equatable {
+    case up(Int)
+    case down(Int)
+    case left(Int)
+    case right(Int)
     case none
 }

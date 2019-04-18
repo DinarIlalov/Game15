@@ -22,6 +22,10 @@ class GameViewController: UIViewController {
     var startPoint: CGPoint = .zero
     var endPoint: CGPoint = .zero
     
+    var currentMove: ChipMove?
+    
+    var panGestureActiveChip: ChipView?
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -33,6 +37,11 @@ class GameViewController: UIViewController {
     }
     
     private func buildGameField() {
+        
+        currentMove = nil
+        startPoint = .zero
+        endPoint = .zero
+        panGestureActiveChip = nil
         
         chipViews.forEach { $0.removeFromSuperview() }
         chipViews.removeAll()
@@ -73,15 +82,30 @@ class GameViewController: UIViewController {
     @objc func handleChipPan(recognizer: UIPanGestureRecognizer) {
         guard let chipView = recognizer.view as? ChipView else { return }
         
-        let availableMoveDirection = game.canMoveChip(chipView.chipModel)
-        
-        if availableMoveDirection == .none {
+        // multiple chips view touching prevention
+        if panGestureActiveChip != nil, panGestureActiveChip != chipView {
             return
         }
         
+        panGestureActiveChip = chipView
+        
         if recognizer.state == .began {
+            
             startPoint = chipView.center
-            switch availableMoveDirection {
+            
+            currentMove = game.chipsMove(from: chipView.chipModel.placeInMatrix)
+            currentMove?.setViewsToMove(allViews: chipViews)
+            
+            guard let moveDirection = currentMove?.moveDirection
+                else {
+                    startPoint = .zero
+                    endPoint = .zero
+                    panGestureActiveChip = nil
+                    currentMove = nil
+                    return
+            }
+            
+            switch moveDirection {
             case .down:
                 endPoint = CGPoint(x: startPoint.x, y: startPoint.y + CGFloat(chipWidth))
             case .up:
@@ -91,56 +115,28 @@ class GameViewController: UIViewController {
             case .left:
                 endPoint = CGPoint(x: startPoint.x - CGFloat(chipWidth), y: startPoint.y)
             default:
+                startPoint = .zero
+                endPoint = .zero
+                panGestureActiveChip = nil
+                currentMove = nil
                 return
             }
-        }
-        
-        let translation = recognizer.translation(in: self.view)
-        
-        if availableMoveDirection == .down {
-            if chipView.center.y + translation.y > endPoint.y {
-                chipView.center = endPoint
-            } else if chipView.center.y + translation.y < startPoint.y {
-                chipView.center = startPoint
-            } else {
-                chipView.center = CGPoint(x: chipView.center.x,
-                                          y: chipView.center.y + translation.y)
+            
+            return
+            
+        } else if recognizer.state == .ended {
+            
+            guard let moveDirection = currentMove?.moveDirection
+                else {
+                    startPoint = .zero
+                    endPoint = .zero
+                    panGestureActiveChip = nil
+                    currentMove = nil
+                    return
             }
-        } else if availableMoveDirection == .up {
-            if chipView.center.y - translation.y < endPoint.y {
-                chipView.center = endPoint
-            } else if chipView.center.y + translation.y > startPoint.y {
-                chipView.center = startPoint
-            } else {
-                chipView.center = CGPoint(x: chipView.center.x,
-                                          y: chipView.center.y + translation.y)
-            }
-        } else if availableMoveDirection == .right {
-            if chipView.center.x + translation.x > endPoint.x {
-                chipView.center = endPoint
-            } else if chipView.center.x + translation.x < startPoint.x {
-                chipView.center = startPoint
-            } else {
-                chipView.center = CGPoint(x: chipView.center.x + translation.x,
-                                          y: chipView.center.y)
-            }
-        } else if availableMoveDirection == .left {
-            if chipView.center.x - translation.x < endPoint.x {
-                chipView.center = endPoint
-            } else if chipView.center.x + translation.x > startPoint.x {
-                chipView.center = startPoint
-            } else {
-                chipView.center = CGPoint(x: chipView.center.x + translation.x,
-                                          y: chipView.center.y)
-            }
-        }
-        
-        recognizer.setTranslation(CGPoint.zero, in: self.view)
-        
-        if recognizer.state == .ended {
             
             var finalPoint: CGPoint
-            switch availableMoveDirection {
+            switch moveDirection {
             case .down:
                 if chipView.center.y > endPoint.y - CGFloat(chipWidth)/2 {
                     finalPoint = endPoint
@@ -169,17 +165,50 @@ class GameViewController: UIViewController {
             default:
                 return
             }
-
-            if finalPoint == endPoint {
-                game.moveChipToZero(chipView.chipModel)
+            
+            if finalPoint == endPoint, currentMove != nil {
+                game.moveChipToZero(currentMove!)
             }
             
             UIView.animate(withDuration: 0.1,
                            delay: 0,
                            options: .curveEaseOut,
-                           animations: { chipView.center = finalPoint },
-                           completion: nil)
-
+                           animations: {
+                            switch moveDirection {
+                            case .up:
+                                for (viewIndex, view) in (self.currentMove?.chipViews ?? []).enumerated() {
+                                    view.center = CGPoint(x: finalPoint.x,
+                                                          y: finalPoint.y - CGFloat(self.chipWidth*viewIndex))
+                                }
+                            case .down:
+                                for (viewIndex, view) in (self.currentMove?.chipViews ?? []).enumerated() {
+                                    view.center = CGPoint(x: finalPoint.x,
+                                                          y: finalPoint.y + CGFloat(self.chipWidth*viewIndex))
+                                }
+                            case .right:
+                                for (viewIndex, view) in (self.currentMove?.chipViews ?? []).enumerated() {
+                                    view.center = CGPoint(x: finalPoint.x + CGFloat(self.chipWidth*viewIndex),
+                                                          y: finalPoint.y)
+                                }
+                            case .left:
+                                for (viewIndex, view) in (self.currentMove?.chipViews ?? []).enumerated() {
+                                    view.center = CGPoint(x: finalPoint.x - CGFloat(self.chipWidth*viewIndex),
+                                                          y: finalPoint.y)
+                                }
+                            default:
+                                break
+                            }
+                            
+            },
+                           completion: { _ in
+                            self.currentMove = nil
+                            self.startPoint = .zero
+                            self.endPoint = .zero
+                            self.panGestureActiveChip = nil
+                            
+            })
+            
+            
             if game.isDone {
                 let alert = UIAlertController(title: "You are win!", message: "Congratulations!", preferredStyle: .alert)
                 let okeyButton = UIAlertAction(title: "OK", style: .default, handler: nil)
@@ -187,8 +216,77 @@ class GameViewController: UIViewController {
                 self.present(alert, animated: true, completion: nil)
             }
             
-            startPoint = .zero
-            endPoint = .zero
+            return
+        }
+        
+        let translation = recognizer.translation(in: self.view)
+        
+        guard let chipsToMove = currentMove?.chipViews else {
+            recognizer.setTranslation(CGPoint.zero, in: self.view)
+            self.currentMove = nil
+            self.startPoint = .zero
+            self.endPoint = .zero
+            self.panGestureActiveChip = nil
+            return
+        }
+        
+        for (chipIndex, view) in chipsToMove.enumerated() {
+            move(view, withIndex: chipIndex, to: currentMove?.moveDirection, with: translation)
+        }
+        
+        recognizer.setTranslation(CGPoint.zero, in: self.view)
+    }
+    
+    private func move(_ chipView: ChipView, withIndex chipIndex: Int, to direction: AvailableMoveDirection?, with translation: CGPoint) {
+        guard let moveDirection = direction, moveDirection != .none else { return }
+        
+        switch moveDirection {
+        case .down:
+            if chipView.center.y + translation.y > endPoint.y + CGFloat(chipWidth*chipIndex) {
+                chipView.center = CGPoint(x: endPoint.x,
+                                          y: endPoint.y + CGFloat(chipWidth*chipIndex))
+            } else if chipView.center.y + translation.y < startPoint.y + CGFloat(chipWidth*chipIndex) {
+                chipView.center = CGPoint(x: startPoint.x,
+                                          y: startPoint.y + CGFloat(chipWidth*chipIndex))
+            } else {
+                chipView.center = CGPoint(x: chipView.center.x,
+                                          y: chipView.center.y + translation.y)
+            }
+        case .up:
+            if chipView.center.y + translation.y < endPoint.y - CGFloat(chipWidth*chipIndex){
+                chipView.center = CGPoint(x: endPoint.x,
+                                          y: endPoint.y - CGFloat(chipWidth*chipIndex))
+            } else if chipView.center.y + translation.y > startPoint.y - CGFloat(chipWidth*chipIndex) {
+                chipView.center = CGPoint(x: startPoint.x,
+                                          y: startPoint.y - CGFloat(chipWidth*chipIndex))
+            } else {
+                chipView.center = CGPoint(x: chipView.center.x,
+                                          y: chipView.center.y + translation.y)
+            }
+        case .right:
+            if chipView.center.x + translation.x > endPoint.x + CGFloat(chipWidth*chipIndex) {
+                chipView.center = CGPoint(x: endPoint.x + CGFloat(chipWidth*chipIndex),
+                                          y: endPoint.y)
+            } else if chipView.center.x + translation.x < startPoint.x + CGFloat(chipWidth*chipIndex) {
+                chipView.center = CGPoint(x: startPoint.x + CGFloat(chipWidth*chipIndex),
+                                          y: startPoint.y)
+            } else {
+                chipView.center = CGPoint(x: chipView.center.x + translation.x,
+                                          y: chipView.center.y)
+            }
+        case .left:
+            if chipView.center.x + translation.x < endPoint.x - CGFloat(chipWidth*chipIndex) {
+                chipView.center = CGPoint(x: endPoint.x - CGFloat(chipWidth*chipIndex),
+                                          y: endPoint.y)
+            } else if chipView.center.x + translation.x > startPoint.x - CGFloat(chipWidth*chipIndex) {
+                chipView.center = CGPoint(x: startPoint.x - CGFloat(chipWidth*chipIndex),
+                                          y: startPoint.y)
+            } else {
+                chipView.center = CGPoint(x: chipView.center.x + translation.x,
+                                          y: chipView.center.y)
+            }
+        default:
+            break
         }
     }
 }
